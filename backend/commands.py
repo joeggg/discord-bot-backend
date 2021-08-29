@@ -26,7 +26,7 @@ def say_test(text):
     client = texttospeech.TextToSpeechClient()
     synthesis_input = texttospeech.SynthesisInput(text=text)
     audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3, pitch=1, speaking_rate=0.6
+        audio_encoding=texttospeech.AudioEncoding.MP3, pitch=6, speaking_rate=0.6
     )
     voice = texttospeech.VoiceSelectionParams(
         language_code="en-GB", name="en-AU-Standard-D"

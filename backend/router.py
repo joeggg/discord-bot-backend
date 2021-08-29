@@ -30,13 +30,13 @@ class Router:
         except Exception as exc:
             print(exc)
             traceback.print_exc()
-            self.sck.send_json({"result": "failure"})
+            self.sck.send_json({"status": "failure"})
             return
 
         start = time.time()
         res = handle_command(command, params)
         print(f"Time taken: {1000*(time.time()-start)}ms")
-        self.sck.send_json({"result": res})
+        self.sck.send_json({"status": res})
 
 def validate_msg(msg):
     """
