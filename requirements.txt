@@ -1,0 +1,2 @@
+pyzmq==22.2.1
+google-cloud-texttospeech==2.5.2
