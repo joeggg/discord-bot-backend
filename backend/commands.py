@@ -6,6 +6,7 @@ import traceback
 from google.cloud import texttospeech
 
 from backend.config import CONFIG
+from backend.google_handler import GoogleHandler
 
 def handle_command(command, params):
     for param in API_COMMANDS[command]["params"]:
@@ -23,18 +24,11 @@ def handle_command(command, params):
     return res
 
 def say_test(text):
-    client = texttospeech.TextToSpeechClient()
-    synthesis_input = texttospeech.SynthesisInput(text=text)
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3, pitch=6, speaking_rate=0.6
-    )
-    voice = texttospeech.VoiceSelectionParams(
-        language_code="en-GB", name="en-AU-Standard-D"
-    )
     # API call
     print("Making Google API call")
+    synthesis_input = texttospeech.SynthesisInput(text=text)
     try:
-        resp = client.synthesize_speech(input=synthesis_input, audio_config=audio_config, voice=voice)
+        resp = GoogleHandler.get_speech(synthesis_input)
     except Exception as exc:
         print(exc)
         traceback.print_exc()

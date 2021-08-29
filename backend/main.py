@@ -14,8 +14,6 @@ def run_server():
     start = time.time()
     heartbeat_interval = CONFIG.getint("general", "heartbeat_interval_s")
     router = Router()
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f'{os.getcwd()}/{CONFIG.get("general", "google_api_key")}'
-    print(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
     
     while 1:
         router.receive()
