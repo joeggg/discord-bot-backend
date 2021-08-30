@@ -16,7 +16,6 @@ class GoogleHandler:
     voice = texttospeech.VoiceSelectionParams(
         language_code="en-GB", name="en-AU-Standard-D"
     )
-    print("Google connection set up")
 
     @classmethod
     def get_speech(cls, input):

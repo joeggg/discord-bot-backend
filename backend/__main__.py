@@ -3,5 +3,5 @@
 """
 from backend.main import run_server
 
-if __name__ == "__MAIN__":
+if __name__ == "__main__":
     run_server()
