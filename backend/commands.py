@@ -2,6 +2,7 @@
     discord-bot-2 backend
 """
 import logging
+import random
 import traceback
 
 from google.cloud import texttospeech
@@ -10,6 +11,7 @@ from backend.config import CONFIG
 from backend.google_handler import GoogleHandler
 
 logger = logging.getLogger("backend")
+DICE_SET = {4, 6, 8, 10, 12, 20}
 
 def handle_command(command, params):
     for param in API_COMMANDS[command]["params"]:
@@ -43,7 +45,23 @@ def say_test(text):
 
     return "success"
 
+def dnd_dice_roll(rolls):
+    results = {}
+
+    for roll in rolls:
+        num, dice = roll.split('d')
+        num = int(num)
+        dice = int(dice)
+        if dice not in DICE_SET:
+            return "failure"
+        if num < 1:
+            return "failure"
+        result = [random.randint(1, dice) for _ in range(num)]
+        results[f"d{dice}"] = result
+
+    return results
 
 API_COMMANDS = {
     "say_test": {"func": say_test, "params": ["text"]},
+    "dnd_dice_roll": {"func": dnd_dice_roll, "params": ["rolls"]},
 }

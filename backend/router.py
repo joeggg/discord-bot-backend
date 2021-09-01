@@ -40,7 +40,7 @@ class Router:
         start = time.time()
         res = handle_command(command, params)
         logger.info("Time taken: %fms", 1000*(time.time()-start))
-        self.sck.send_json({"status": res})
+        self.sck.send_json({"result": res})
 
 def validate_msg(msg):
     """
