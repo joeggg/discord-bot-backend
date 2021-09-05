@@ -5,6 +5,7 @@ import logging
 import time
 
 from backend.config import CONFIG
+from backend.google_handler import GoogleHandler
 from backend.logging import setup_logger
 from backend.router import Router
 
@@ -17,6 +18,7 @@ def run_server():
     start = time.time()
     setup_logger()
     heartbeat_interval = CONFIG.getint("general", "heartbeat_interval_s")
+    GoogleHandler.initialise()
     router = Router()
     
     while 1:
