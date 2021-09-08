@@ -26,6 +26,9 @@ class Router:
         self.sck.setsockopt(zmq.RCVTIMEO, 1000)
 
     def receive(self):
+        """
+        Receive, validate and handle message
+        """
         try:
             msg = self.sck.recv_json()
             command, params = validate_msg(msg)

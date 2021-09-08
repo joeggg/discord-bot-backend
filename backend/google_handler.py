@@ -11,6 +11,9 @@ from backend.config import CONFIG, VOICE_PRESETS
 logger = logging.getLogger("backend")
 
 class GoogleHandler:
+    """
+    Static helper class to handle interfaces to Google APIs
+    """
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f'{os.getcwd()}/{CONFIG.get("general", "google_api_key")}'
     audio_config = None
     voice = None
@@ -39,6 +42,9 @@ class GoogleHandler:
 
     @classmethod
     def get_speech(cls, input):
+        """
+        Request TTS audio binary of input phrase
+        """
         resp = cls.client.synthesize_speech(
             input=input, audio_config=cls.audio_config, voice=cls.voice
         )
