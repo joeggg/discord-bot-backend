@@ -7,7 +7,7 @@ import traceback
 
 from google.cloud import texttospeech
 
-from backend.config import CONFIG
+from backend.config import CONFIG, VOICE_PRESETS
 from backend.google_handler import GoogleHandler
 
 logger = logging.getLogger("backend")
@@ -18,7 +18,7 @@ def handle_command(command, params):
         if param not in params:
             err_msg = f"Missing param: {param}"
             logger.error(err_msg)
-            return {"code": 1, "result": err_msg}
+            return {"code": 1, "error": {"msg": err_msg, "trace": ""}}
 
     try:
         func = API_COMMANDS[command]["func"]
@@ -26,7 +26,10 @@ def handle_command(command, params):
     except Exception as exc:
         logger.error(exc)
         logger.error(traceback.format_exc())
-        return {"code": 1, "result": str(exc)}
+        return {"code": 1, "error": {"msg": str(exc), "trace": traceback.format_exc()}}
+
+    if code == 1:
+        return {"code": 1, "error": {"msg": res, "trace": ""}}
 
     return {"code": code, "result": res}
 
@@ -41,6 +44,19 @@ def say_test(text):
         logger.info("Google texttospeech response written")
 
     return 0, ""
+
+def set_google_preset(preset):
+    if preset not in VOICE_PRESETS:
+        return 1, "Voice preset does not exist"
+    
+    settings = VOICE_PRESETS[preset]
+    GoogleHandler.voice = texttospeech.VoiceSelectionParams(
+        language_code=settings["voice_type"][:5], name=settings["voice_type"]
+    )
+    GoogleHandler.audio_config.pitch = settings["pitch"]
+    GoogleHandler.audio_config.speaking_rate = settings["speaking_rate"]
+
+    return 0, f"Voice set to {preset}"
 
 def change_google_voice(voice):
     logger.info("Voice requested to change to: %s", voice)
@@ -98,6 +114,7 @@ def dnd_dice_roll(rolls):
 
 API_COMMANDS = {
     "say_test": {"func": say_test, "params": ["text"]},
+    "set_google_preset": {"func": set_google_preset, "params": ["preset"]},
     "change_google_voice": {"func": change_google_voice, "params": ["voice"]},
     "change_google_pitch": {"func": change_google_pitch, "params": ["pitch"]},
     "change_google_rate": {"func": change_google_rate, "params": ["rate"]},

@@ -6,7 +6,7 @@ import os
 
 from google.cloud import texttospeech
 
-from backend.config import CONFIG
+from backend.config import CONFIG, VOICE_PRESETS
 
 logger = logging.getLogger("backend")
 
@@ -22,14 +22,14 @@ class GoogleHandler:
         logger.info("Connecting to Google...")
 
         cls.client = texttospeech.TextToSpeechClient()
-        voice = CONFIG.get("texttospeech", "default_voice")
+        settings = VOICE_PRESETS["default"]
         cls.voice = texttospeech.VoiceSelectionParams(
-            language_code=voice[:5], name=voice
+            language_code=settings["voice_type"][:5], name=settings["voice_type"]
         )
         cls.audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
-            pitch=CONFIG.getfloat("texttospeech", "default_pitch"),
-            speaking_rate=CONFIG.getfloat("texttospeech", "default_rate")
+            pitch=settings["pitch"],
+            speaking_rate=settings["speaking_rate"]
         )
         cls.voice_list = [
             voice.name

@@ -20,7 +20,7 @@ def run_server():
     heartbeat_interval = CONFIG.getint("general", "heartbeat_interval_s")
     GoogleHandler.initialise()
     router = Router()
-    
+
     while 1:
         router.receive()
         if (time.time() - start) > heartbeat_interval:
