@@ -10,11 +10,15 @@ from backend.config import CONFIG, VOICE_PRESETS
 
 logger = logging.getLogger("backend")
 
+
 class GoogleHandler:
     """
     Static helper class to handle interfaces to Google APIs
     """
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f'{os.getcwd()}/{CONFIG.get("general", "google_api_key")}'
+
+    os.environ[
+        "GOOGLE_APPLICATION_CREDENTIALS"
+    ] = f'{os.getcwd()}/{CONFIG.get("general", "google_api_key")}'
     audio_config = None
     voice = None
     client = None
@@ -32,7 +36,7 @@ class GoogleHandler:
         cls.audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
             pitch=settings["pitch"],
-            speaking_rate=settings["speaking_rate"]
+            speaking_rate=settings["speaking_rate"],
         )
         cls.voice_list = [
             voice.name

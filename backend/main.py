@@ -11,6 +11,7 @@ from backend.router import Router
 
 logger = logging.getLogger("backend")
 
+
 def run_server():
     """
     Main running loop

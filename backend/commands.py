@@ -13,10 +13,11 @@ from backend.google_handler import GoogleHandler
 logger = logging.getLogger("backend")
 DICE_SET = {4, 6, 8, 10, 12, 20}
 
+
 def handle_command(command: str, params: dict) -> dict:
     """
-    Checks command inputs and calls the needed function, 
-    handling errors and the return API response 
+    Checks command inputs and calls the needed function,
+    handling errors and the return API response
     """
     for param in API_COMMANDS[command]["params"]:
         if param not in params:
@@ -37,6 +38,7 @@ def handle_command(command: str, params: dict) -> dict:
 
     return {"code": code, "result": res}
 
+
 def say_test(text):
     """
     Create a TTS audio file for attaching with frontend
@@ -52,13 +54,14 @@ def say_test(text):
 
     return 0, ""
 
+
 def set_google_preset(preset):
     """
     Select a TTS voice preset from saved settings
     """
     if preset not in VOICE_PRESETS:
         return 1, "Voice preset does not exist"
-    
+
     settings = VOICE_PRESETS[preset]
     GoogleHandler.voice = texttospeech.VoiceSelectionParams(
         language_code=settings["voice_type"][:5], name=settings["voice_type"]
@@ -68,12 +71,13 @@ def set_google_preset(preset):
 
     return 0, f"Voice set to {preset}"
 
+
 def change_google_voice(voice):
     """
     Set only TTS voice type to a specific value
     """
     logger.info("Voice requested to change to: %s", voice)
-    
+
     if voice == "default":
         voice = CONFIG.get("texttospeech", "default_voice")
     elif voice not in GoogleHandler.voice_list:
@@ -84,12 +88,13 @@ def change_google_voice(voice):
     )
     return 0, f"Voice successfully changed to {voice}"
 
+
 def change_google_pitch(pitch):
     """
     Set only TTS voice pitch to a specific value
     """
     logger.info("Voice pitch requested to change to: %s", pitch)
-    
+
     if pitch == "default":
         pitch = CONFIG.get("texttospeech", "default_pitch")
     elif float(pitch) < -20.0 or float(pitch) > 20.0:
@@ -98,12 +103,13 @@ def change_google_pitch(pitch):
     GoogleHandler.audio_config.pitch = float(pitch)
     return 0, f"Pitch successfully changed to {pitch}"
 
+
 def change_google_rate(rate):
     """
     Set only TTS speaking rate to a specific value
     """
     logger.info("Speaking rate requested to change to: %s", rate)
-    
+
     if rate == "default":
         rate = CONFIG.get("texttospeech", "default_rate")
     elif float(rate) < 0.25 or float(rate) > 4.0:
@@ -111,6 +117,7 @@ def change_google_rate(rate):
 
     GoogleHandler.audio_config.speaking_rate = float(rate)
     return 0, f"Speaking rate successfully changed to {rate}"
+
 
 def dnd_dice_roll(rolls):
     """
@@ -120,7 +127,7 @@ def dnd_dice_roll(rolls):
     results = {}
     logger.info("Performing dice roll for rolls: %s", rolls)
     for roll in rolls:
-        num, dice = roll.split('d')
+        num, dice = roll.split("d")
         num = int(num)
         dice = int(dice)
         if dice not in DICE_SET:
@@ -134,6 +141,7 @@ def dnd_dice_roll(rolls):
         results[f"d{dice}"] = result
 
     return 0, results
+
 
 API_COMMANDS = {
     "say_test": {"func": say_test, "params": ["text"]},

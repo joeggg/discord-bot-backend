@@ -13,10 +13,12 @@ from backend.commands import handle_command
 logger = logging.getLogger("backend")
 NS_IN_MS = 1000000
 
+
 class Router:
     """
     Handle zmq interface
     """
+
     def __init__(self):
         ctx = zmq.Context()
         self.sck = ctx.socket(zmq.REP)
@@ -43,8 +45,9 @@ class Router:
 
         start = time.time_ns()
         res = handle_command(command, params)
-        logger.info("Time taken: %fms", (time.time_ns()-start)/NS_IN_MS)
+        logger.info("Time taken: %fms", (time.time_ns() - start) / NS_IN_MS)
         self.sck.send_json(res)
+
 
 def validate_msg(msg):
     """
