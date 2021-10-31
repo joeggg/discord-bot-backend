@@ -45,7 +45,7 @@ class GoogleHandler:
         logger.info("Initialised Google connection")
 
     @classmethod
-    def get_speech(cls, input):
+    def get_speech(cls, input: str):
         """
         Request TTS audio binary of input phrase
         """

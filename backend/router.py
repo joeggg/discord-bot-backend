@@ -49,7 +49,7 @@ class Router:
         self.sck.send_json(res)
 
 
-def validate_msg(msg):
+def validate_msg(msg: dict):
     """
     Check required keys in message
     """
