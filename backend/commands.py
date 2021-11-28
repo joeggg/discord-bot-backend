@@ -20,12 +20,6 @@ async def handle_command(command: str, params: dict) -> dict:
     Checks command inputs and calls the needed function,
     handling errors and the return API response
     """
-    for param in API_COMMANDS[command]["params"]:
-        if param not in params:
-            err_msg = f"Missing param: {param}"
-            logger.error(err_msg)
-            return {"code": 1, "error": {"msg": err_msg, "trace": ""}}
-
     try:
         func = API_COMMANDS[command]["func"]
         code, res = await func(*params.values())
