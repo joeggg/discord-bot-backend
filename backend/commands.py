@@ -1,6 +1,7 @@
 """
     discord-bot-2 backend
 """
+import asyncio
 import logging
 import random
 import traceback
@@ -14,7 +15,7 @@ logger = logging.getLogger("backend")
 DICE_SET = {4, 6, 8, 10, 12, 20}
 
 
-def handle_command(command: str, params: dict) -> dict:
+async def handle_command(command: str, params: dict) -> dict:
     """
     Checks command inputs and calls the needed function,
     handling errors and the return API response
@@ -27,7 +28,7 @@ def handle_command(command: str, params: dict) -> dict:
 
     try:
         func = API_COMMANDS[command]["func"]
-        code, res = func(*params.values())
+        code, res = await func(*params.values())
     except Exception as exc:
         logger.error(exc)
         logger.error(traceback.format_exc())
@@ -39,7 +40,12 @@ def handle_command(command: str, params: dict) -> dict:
     return {"code": code, "result": res}
 
 
-def say_test(text):
+async def test_async():
+    await asyncio.sleep(2)
+    return 0, "slept"
+
+
+async def say_test(text):
     """
     Create a TTS audio file for attaching with frontend
     """
@@ -55,7 +61,7 @@ def say_test(text):
     return 0, ""
 
 
-def set_google_preset(preset):
+async def set_google_preset(preset):
     """
     Select a TTS voice preset from saved settings
     """
@@ -72,7 +78,7 @@ def set_google_preset(preset):
     return 0, f"Voice set to {preset}"
 
 
-def change_google_voice(voice):
+async def change_google_voice(voice):
     """
     Set only TTS voice type to a specific value
     """
@@ -83,13 +89,11 @@ def change_google_voice(voice):
     elif voice not in GoogleHandler.voice_list:
         return 1, "Invalid voice type"
 
-    GoogleHandler.voice = texttospeech.VoiceSelectionParams(
-        language_code=voice[:5], name=voice
-    )
+    GoogleHandler.voice = texttospeech.VoiceSelectionParams(language_code=voice[:5], name=voice)
     return 0, f"Voice successfully changed to {voice}"
 
 
-def change_google_pitch(pitch):
+async def change_google_pitch(pitch):
     """
     Set only TTS voice pitch to a specific value
     """
@@ -104,7 +108,7 @@ def change_google_pitch(pitch):
     return 0, f"Pitch successfully changed to {pitch}"
 
 
-def change_google_rate(rate):
+async def change_google_rate(rate):
     """
     Set only TTS speaking rate to a specific value
     """
@@ -119,7 +123,7 @@ def change_google_rate(rate):
     return 0, f"Speaking rate successfully changed to {rate}"
 
 
-def dnd_dice_roll(rolls):
+async def dnd_dice_roll(rolls):
     """
     Perform a set of rolls with input format ["4d12", "3d20", ...]
     [<num rolls><dice size>, ...]
@@ -144,6 +148,7 @@ def dnd_dice_roll(rolls):
 
 
 API_COMMANDS = {
+    "test_async": {"func": test_async, "params": []},
     "say_test": {"func": say_test, "params": ["text"]},
     "set_google_preset": {"func": set_google_preset, "params": ["preset"]},
     "change_google_voice": {"func": change_google_voice, "params": ["voice"]},

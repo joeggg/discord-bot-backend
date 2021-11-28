@@ -3,16 +3,17 @@
 """
 
 import asyncio
-import json
 import logging
+import secrets
 
+import cachetools
+from google.api_core.gapic_v1 import client_info
 import zmq
 import zmq.asyncio
 
 from redis import Redis, RedisError
 
 from backend.config import CONFIG
-from backend.commands import API_COMMANDS
 
 logger = logging.getLogger("backend")
 
@@ -24,8 +25,12 @@ class Router:
 
     def __init__(self) -> None:
         self.__db = Redis(decode_responses=True)
-        self.in_key = "work_queue"
-        self.out_key = "response_queue"
+        self.in_queue = "job_queue"
+        self.out_queue = "response_queue"
+        self.job_map = "job_map"
+        self.resp_map = "response_map"
+        self.client_map = cachetools.TTLCache(1000, 60)
+
         ctx = zmq.asyncio.Context()
         self.__sck = ctx.socket(zmq.ROUTER)
         address = CONFIG.get("general", "zmq_address")
@@ -35,6 +40,7 @@ class Router:
         self.__sck.setsockopt(zmq.LINGER, 100)
 
         self.is_shutting_down = False
+        self.client = None
 
     async def recv(self) -> None:
         """
@@ -42,8 +48,7 @@ class Router:
         """
         while not self.is_shutting_down:
             try:
-                msg = await self.__sck.recv_json()
-                validate_msg(msg)
+                msg = await self.__sck.recv_multipart()
                 await self.put_in_queue(msg)
             except zmq.Again:
                 pass
@@ -57,8 +62,16 @@ class Router:
         """
         for attempt in range(max_attempts):
             try:
-                self.__db.rpush(self.in_key, json.dumps(msg))
-                logger.info("Queued command: %s", msg)
+                job_id = secrets.token_hex(8)
+                with self.__db.pipeline() as pipe:
+                    pipe.rpush(self.in_queue, job_id)
+                    pipe.expire(self.in_queue, 60)
+                    pipe.hset(self.job_map, job_id, msg[2])
+                    pipe.expire(self.job_map, 60)
+                    pipe.execute()
+
+                self.client_map[job_id] = msg[0]
+                logger.info("[router] Queued job: %s", job_id)
                 return
             except RedisError:
                 logger.exception(
@@ -76,32 +89,22 @@ class Router:
         """
         while not self.is_shutting_down:
             try:
-                msg = self.get_from_queue()
-                if msg:
-                    await self.__sck.send_json(msg)
-                    logger.info("sent response")
+                client, response = self.get_from_queue()
+                if client:
+                    await self.__sck.send_multipart(
+                        [client, b"", bytes(response, encoding="utf8")],
+                    )
+                    logger.info("[router] Sent response")
                     continue
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.01)
             except Exception as exc:
                 logger.exception(exc)
                 self.__sck.send_json({"code": 1})
 
     def get_from_queue(self) -> str:
-        msg = self.__db.lpop(self.out_key)
-        return msg
-
-
-def validate_msg(msg: dict):
-    """
-    Check required keys in message
-    """
-    params = msg.get("params")
-    command = msg.get("command")
-    if not command or not params:
-        raise Exception("Message failed to validate")
-
-    for param in API_COMMANDS[command]["params"]:
-        if param not in params:
-            err_msg = f"Missing param: {param}"
-            logger.error(err_msg)
-            raise Exception(err_msg)
+        job_id = self.__db.lpop(self.out_queue)
+        if job_id:
+            response = self.__db.hget(self.resp_map, job_id)
+            self.__db.hdel(self.resp_map, job_id)
+            return self.client_map.get(job_id), response
+        return None, None
