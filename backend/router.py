@@ -7,6 +7,7 @@ import json
 import logging
 import secrets
 from hashlib import md5
+from typing import Tuple
 
 import cachetools
 import zmq
@@ -15,6 +16,7 @@ import zmq.asyncio
 from redis import Redis, RedisError, ConnectionError
 
 from backend.config import CONFIG
+from backend.timing import Timer
 
 logger = logging.getLogger("backend")
 
@@ -28,8 +30,6 @@ class Router:
         self.__db = Redis(decode_responses=True)
         self.in_queue = "job_queue"
         self.out_queue = "response_queue"
-        self.job_map = "job_map"
-        self.resp_map = "response_map"
         self.job_cache = cachetools.TTLCache(1000, 60)
 
         ctx = zmq.asyncio.Context()
@@ -69,7 +69,8 @@ class Router:
                 job = [job_id, *[x.hex() for x in msg]]
                 self.__db.rpush(self.in_queue, json.dumps(job))
                 self.__db.expire(self.in_queue, 60)
-                self.job_cache[job_id] = None
+                self.job_cache[job_id] = None  # store ID as dict for faster lookup
+                Timer.start(job_id)
                 logger.info("[router] Queued job: %s", job_id)
                 return
             except (RedisError, ConnectionError):
@@ -82,22 +83,25 @@ class Router:
 
         raise Exception(f"Redis connection failure, retried {max_attempts} times")
 
-    async def send(self):
+    async def send(self) -> None:
         """
         Check for completed jobs and send until shutdown
         """
         while not self.is_shutting_down:
             try:
-                msg = self.get_from_queue()
+                job_id, msg = self.get_from_queue()
                 if msg:
                     await self.__sck.send_multipart(msg)
-                    logger.info("[router] Sent response")
+                    logger.info("[router] Sent response, job took %sms", Timer.stop(job_id))
                 await asyncio.sleep(0.01)
             except Exception as exc:
                 logger.exception(exc)
                 self.__sck.send_json({"code": 1})
 
-    def get_from_queue(self) -> str:
+    def get_from_queue(self) -> Tuple[str, list]:
+        """
+        Get job ID and zmq message from Redis
+        """
         msg = self.__db.lpop(self.out_queue)
         if msg:
             data = json.loads(msg)
@@ -105,6 +109,6 @@ class Router:
             if job_id in self.job_cache:
                 response = [bytes.fromhex(x) for x in data[1:]]
                 del self.job_cache[job_id]
-                return response
+                return job_id, response
             logger.error("Job ID failed to validate. Fake job response?")
-        return None
+        return None, None
