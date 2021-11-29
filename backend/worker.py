@@ -31,7 +31,6 @@ class Worker:
         self.resp_map = "response_map"
         self.client_map = "client_map"
         self.is_shutting_down = False
-        self.heartbeat_interval = CONFIG.getint("general", "heartbeat_interval_s")
         self.msg_len = 3
 
     @property
@@ -42,7 +41,6 @@ class Worker:
         """
         Try to process jobs from queue until shutdown
         """
-        start = time.time()
         while not self.is_shutting_down:
             try:
                 job_id, client, work = self.get_work()
@@ -55,10 +53,6 @@ class Worker:
             except Exception as exc:
                 logger.exception("[%s] An error occurred processing job: %s", self.__wid, exc)
                 await asyncio.sleep(0.5)
-
-            if time.time() - start > self.heartbeat_interval:
-                start = time.time()
-                logger.info("[%s] HEARTBEAT", self.__wid)
 
     def get_work(self) -> Tuple[str, bytes, dict]:
         """Grab work from redis queue"""
