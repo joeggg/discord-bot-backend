@@ -3,15 +3,16 @@
 """
 
 import asyncio
+import json
 import logging
 import secrets
+from hashlib import md5
 
 import cachetools
-from google.api_core.gapic_v1 import client_info
 import zmq
 import zmq.asyncio
 
-from redis import Redis, RedisError
+from redis import Redis, RedisError, ConnectionError
 
 from backend.config import CONFIG
 
@@ -29,15 +30,15 @@ class Router:
         self.out_queue = "response_queue"
         self.job_map = "job_map"
         self.resp_map = "response_map"
-        self.client_map = cachetools.TTLCache(1000, 60)
+        self.job_cache = cachetools.TTLCache(1000, 60)
 
         ctx = zmq.asyncio.Context()
         self.__sck = ctx.socket(zmq.ROUTER)
         address = CONFIG.get("general", "zmq_address")
         self.__sck.bind(address)
         logger.info("Socket bound at %s", address)
-        self.__sck.setsockopt(zmq.RCVTIMEO, 100)
-        self.__sck.setsockopt(zmq.LINGER, 100)
+        self.__sck.setsockopt(zmq.RCVTIMEO, 500)
+        self.__sck.setsockopt(zmq.LINGER, 1000)
 
         self.is_shutting_down = False
         self.client = None
@@ -55,25 +56,23 @@ class Router:
             except Exception as exc:
                 logger.exception(exc)
                 self.__sck.send_json({"code": 1})
+            finally:
+                await asyncio.sleep(0.01)
 
-    async def put_in_queue(self, msg: dict, max_attempts=5) -> None:
+    async def put_in_queue(self, msg: list, max_attempts=5) -> None:
         """
         Puts a message in the input queue
         """
         for attempt in range(max_attempts):
             try:
-                job_id = secrets.token_hex(8)
-                with self.__db.pipeline() as pipe:
-                    pipe.rpush(self.in_queue, job_id)
-                    pipe.expire(self.in_queue, 60)
-                    pipe.hset(self.job_map, job_id, msg[2])
-                    pipe.expire(self.job_map, 60)
-                    pipe.execute()
-
-                self.client_map[job_id] = msg[0]
+                job_id = md5(secrets.token_bytes(8)).hexdigest()
+                job = [job_id, *[x.hex() for x in msg]]
+                self.__db.rpush(self.in_queue, json.dumps(job))
+                self.__db.expire(self.in_queue, 60)
+                self.job_cache[job_id] = None
                 logger.info("[router] Queued job: %s", job_id)
                 return
-            except RedisError:
+            except (RedisError, ConnectionError):
                 logger.exception(
                     "An error occurred in Redis, retrying (attempt %s of %s)",
                     attempt + 1,
@@ -89,22 +88,23 @@ class Router:
         """
         while not self.is_shutting_down:
             try:
-                client, response = self.get_from_queue()
-                if client:
-                    await self.__sck.send_multipart(
-                        [client, b"", bytes(response, encoding="utf8")],
-                    )
+                msg = self.get_from_queue()
+                if msg:
+                    await self.__sck.send_multipart(msg)
                     logger.info("[router] Sent response")
-                    continue
                 await asyncio.sleep(0.01)
             except Exception as exc:
                 logger.exception(exc)
                 self.__sck.send_json({"code": 1})
 
     def get_from_queue(self) -> str:
-        job_id = self.__db.lpop(self.out_queue)
-        if job_id:
-            response = self.__db.hget(self.resp_map, job_id)
-            self.__db.hdel(self.resp_map, job_id)
-            return self.client_map.get(job_id), response
-        return None, None
+        msg = self.__db.lpop(self.out_queue)
+        if msg:
+            data = json.loads(msg)
+            job_id = data[0]
+            if job_id in self.job_cache:
+                response = [bytes.fromhex(x) for x in data[1:]]
+                del self.job_cache[job_id]
+                return response
+            logger.error("Job ID failed to validate. Fake job response?")
+        return None

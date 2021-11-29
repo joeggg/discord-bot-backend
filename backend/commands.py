@@ -24,8 +24,7 @@ async def handle_command(command: str, params: dict) -> dict:
         func = API_COMMANDS[command]["func"]
         code, res = await func(*params.values())
     except Exception as exc:
-        logger.error(exc)
-        logger.error(traceback.format_exc())
+        logger.exception(exc)
         return {"code": 1, "error": {"msg": str(exc), "trace": traceback.format_exc()}}
 
     if code == 1:

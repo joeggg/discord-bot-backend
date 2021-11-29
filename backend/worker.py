@@ -8,7 +8,7 @@ import logging
 import time
 from typing import Tuple
 
-from redis import Redis, RedisError
+from redis import Redis, RedisError, ConnectionError
 
 from backend.commands import API_COMMANDS, handle_command
 from backend.config import CONFIG
@@ -32,7 +32,7 @@ class Worker:
         self.client_map = "client_map"
         self.is_shutting_down = False
         self.heartbeat_interval = CONFIG.getint("general", "heartbeat_interval_s")
-        self.current_client = ""
+        self.msg_len = 3
 
     @property
     def wid(self):
@@ -45,13 +45,12 @@ class Worker:
         start = time.time()
         while not self.is_shutting_down:
             try:
-                job_id, work = self.get_work()
+                job_id, client, work = self.get_work()
                 if work:
                     validate_msg(work)
                     response = await handle_command(*work.values())
-                    await self.put_response(job_id, response)
+                    await self.put_response(job_id, client, response)
                     logger.info("[%s] Completed job: %s", self.__wid, job_id)
-                    continue
                 await asyncio.sleep(0.01)
             except Exception as exc:
                 logger.exception("[%s] An error occurred processing job: %s", self.__wid, exc)
@@ -61,27 +60,41 @@ class Worker:
                 start = time.time()
                 logger.info("[%s] HEARTBEAT", self.__wid)
 
-    def get_work(self) -> Tuple[str, dict]:
+    def get_work(self) -> Tuple[str, bytes, dict]:
         """Grab work from redis queue"""
-        job_id = self.__db.lpop(self.in_queue)
-        if job_id:
-            data = self.__db.hget(self.job_map, job_id)
-            self.__db.hdel(self.job_map, job_id)
-            return job_id, json.loads(data)
-        return None, None
+        msg = self.__db.lpop(self.in_queue)
+        if msg:
+            job = json.loads(msg)
+            self.msg_len = len(job)
+            if self.msg_len == 4:
+                client, _, work = [bytes.fromhex(x) for x in job[1:]]
+                return job[0], client, json.loads(work)
+            if self.msg_len == 3:
+                client, work = [bytes.fromhex(x) for x in job[1:]]
+                return job[0], client, json.loads(work)
+            else:
+                raise Exception("Message malformed")
+        return None, None, None
 
-    async def put_response(self, job_id: str, response: dict, max_attempts=5) -> None:
+    async def put_response(
+        self,
+        job_id: str,
+        client: bytes,
+        response: dict,
+        max_attempts=5,
+    ) -> None:
         """Put response in redis queue"""
         for attempt in range(max_attempts):
             try:
-                with self.__db.pipeline() as pipe:
-                    pipe.rpush(self.out_queue, job_id)
-                    pipe.expire(self.out_queue, 60)
-                    pipe.hset(self.resp_map, job_id, json.dumps(response))
-                    pipe.expire(self.resp_map, 60)
-                    pipe.execute()
+                msg = None
+                if self.msg_len == 4:
+                    msg = [job_id, client.hex(), "", json.dumps(response).encode().hex()]
+                if self.msg_len == 3:
+                    msg = [job_id, client.hex(), json.dumps(response).encode().hex()]
+                self.__db.rpush(self.out_queue, json.dumps(msg))
+                self.__db.expire(self.out_queue, 60)
                 return
-            except RedisError:
+            except (RedisError, ConnectionError):
                 logger.exception(
                     "[%s] An error occurred in Redis, retrying (attempt %s of %s)",
                     self.__wid,

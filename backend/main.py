@@ -7,7 +7,7 @@ import logging
 
 from backend.config import CONFIG
 from backend.google_handler import GoogleHandler
-from backend.logging import setup_logger
+from backend.logger import setup_logger
 from backend.router import Router
 from backend.worker import Worker
 
