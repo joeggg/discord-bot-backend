@@ -5,13 +5,11 @@
 import asyncio
 import json
 import logging
-import time
 from typing import Tuple
 
 from redis import Redis, RedisError, ConnectionError
 
 from backend.commands import API_COMMANDS, handle_command
-from backend.config import CONFIG
 
 logger = logging.getLogger("backend")
 
@@ -27,8 +25,6 @@ class Worker:
         self.__db = Redis(decode_responses=True)
         self.in_queue = "job_queue"
         self.out_queue = "response_queue"
-        self.job_map = "job_map"
-        self.resp_map = "response_map"
         self.client_map = "client_map"
         self.is_shutting_down = False
         self.msg_len = 3
@@ -100,7 +96,7 @@ class Worker:
         raise Exception(f"Redis connection failure, retried {max_attempts} times")
 
 
-def validate_msg(msg: dict):
+def validate_msg(msg: dict) -> None:
     """
     Check required keys in message
     """
