@@ -1,7 +1,9 @@
 """
-    Timing utils
-"""
+    discord-bot-2 backend
+ 
+    Timing utilities
 
+"""
 import functools
 import logging
 import time

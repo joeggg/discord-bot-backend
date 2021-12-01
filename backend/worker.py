@@ -1,7 +1,9 @@
 """
-    Worker
-"""
+    discord-bot-2 backend
 
+    Worker thread
+
+"""
 import asyncio
 import json
 import logging
@@ -9,7 +11,7 @@ from typing import Tuple
 
 from redis import Redis, RedisError, ConnectionError
 
-from backend.commands import API_COMMANDS, handle_command
+from .commands import API_COMMANDS, handle_command
 
 logger = logging.getLogger("backend")
 

@@ -1,7 +1,9 @@
 """
     discord-bot-2 backend
-"""
 
+    Router receiver and sender threads
+
+"""
 import asyncio
 import json
 import logging
@@ -12,11 +14,10 @@ from typing import Tuple
 import cachetools
 import zmq
 import zmq.asyncio
-
 from redis import Redis, RedisError, ConnectionError
 
-from backend.config import CONFIG
-from backend.timing import Timer
+from .config import CONFIG
+from .timing import Timer
 
 logger = logging.getLogger("backend")
 
@@ -59,7 +60,7 @@ class Router:
             finally:
                 await asyncio.sleep(0.01)
 
-    async def put_in_queue(self, msg: list, max_attempts=5) -> None:
+    async def put_in_queue(self, msg: list, max_attempts: int = 5) -> None:
         """
         Puts a message in the input queue
         """
@@ -93,10 +94,11 @@ class Router:
                 if msg:
                     await self.__sck.send_multipart(msg)
                     logger.info("[router] Sent response, job took %sms", Timer.stop(job_id))
-                await asyncio.sleep(0.01)
             except Exception as exc:
                 logger.exception(exc)
                 self.__sck.send_json({"code": 1})
+            finally:
+                await asyncio.sleep(0.01)
 
     def get_from_queue(self) -> Tuple[str, list]:
         """

@@ -1,13 +1,14 @@
 """
     discord-bot-2 backend
+
+    Main entry point to run server
+
 """
-
 import asyncio
+from asyncio.windows_events import WindowsSelectorEventLoopPolicy
 
-from asyncio.windows_events import WindowsProactorEventLoopPolicy
-
-from backend.main import run_server
+from .server import run_server
 
 if __name__ == "__main__":
-    asyncio.set_event_loop_policy(WindowsProactorEventLoopPolicy())
+    asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())  # windows specific thing
     asyncio.run(run_server())

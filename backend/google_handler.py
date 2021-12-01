@@ -1,12 +1,15 @@
 """
     discord-bot-backend
+
+    Google services handling
+
 """
 import logging
 import os
 
 from google.cloud import texttospeech
 
-from backend.config import CONFIG, VOICE_PRESETS
+from .config import CONFIG, VOICE_PRESETS
 
 logger = logging.getLogger("backend")
 
@@ -39,8 +42,7 @@ class GoogleHandler:
             speaking_rate=settings["speaking_rate"],
         )
         cls.voice_list = [
-            voice.name
-            for voice in cls.client.list_voices(texttospeech.ListVoicesRequest()).voices
+            voice.name for voice in cls.client.list_voices(texttospeech.ListVoicesRequest()).voices
         ]
         logger.info("Initialised Google connection")
 

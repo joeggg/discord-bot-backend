@@ -1,5 +1,8 @@
 """
     discord-bot-backend
+
+    Logger setup
+
 """
 import logging
 

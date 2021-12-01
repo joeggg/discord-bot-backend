@@ -1,16 +1,18 @@
 """
     discord-bot-2 backend
-"""
 
+    Top-level server functions    
+
+"""
 import asyncio
 import logging
 import time
 
-from backend.config import CONFIG
-from backend.google_handler import GoogleHandler
-from backend.logger import setup_logger
-from backend.router import Router
-from backend.worker import Worker
+from .config import CONFIG
+from .google_handler import GoogleHandler
+from .logger import setup_logger
+from .router import Router
+from .worker import Worker
 
 logger = logging.getLogger("backend")
 
@@ -33,6 +35,7 @@ async def run_server():
     num_workers = CONFIG.getint("general", "num_workers")
     GoogleHandler.initialise()
     router = Router()
+    logger.info("Starting server")
 
     futures = [
         *[Worker(i).run() for i in range(num_workers)],

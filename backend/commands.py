@@ -1,15 +1,19 @@
 """
     discord-bot-2 backend
+
+    API command functions
+
 """
 import asyncio
 import logging
 import random
 import traceback
+from typing import List
 
 from google.cloud import texttospeech
 
-from backend.config import CONFIG, VOICE_PRESETS
-from backend.google_handler import GoogleHandler
+from .config import CONFIG, VOICE_PRESETS
+from .google_handler import GoogleHandler
 
 logger = logging.getLogger("backend")
 DICE_SET = {4, 6, 8, 10, 12, 20}
@@ -38,7 +42,7 @@ async def test_async():
     return 0, "slept"
 
 
-async def say_test(text):
+async def say_test(text: str):
     """
     Create a TTS audio file for attaching with frontend
     """
@@ -54,7 +58,7 @@ async def say_test(text):
     return 0, ""
 
 
-async def set_google_preset(preset):
+async def set_google_preset(preset: str):
     """
     Select a TTS voice preset from saved settings
     """
@@ -71,7 +75,7 @@ async def set_google_preset(preset):
     return 0, f"Voice set to {preset}"
 
 
-async def change_google_voice(voice):
+async def change_google_voice(voice: str):
     """
     Set only TTS voice type to a specific value
     """
@@ -86,7 +90,7 @@ async def change_google_voice(voice):
     return 0, f"Voice successfully changed to {voice}"
 
 
-async def change_google_pitch(pitch):
+async def change_google_pitch(pitch: str):
     """
     Set only TTS voice pitch to a specific value
     """
@@ -101,7 +105,7 @@ async def change_google_pitch(pitch):
     return 0, f"Pitch successfully changed to {pitch}"
 
 
-async def change_google_rate(rate):
+async def change_google_rate(rate: str):
     """
     Set only TTS speaking rate to a specific value
     """
@@ -116,7 +120,7 @@ async def change_google_rate(rate):
     return 0, f"Speaking rate successfully changed to {rate}"
 
 
-async def dnd_dice_roll(rolls):
+async def dnd_dice_roll(rolls: List[str]):
     """
     Perform a set of rolls with input format ["4d12", "3d20", ...]
     [<num rolls><dice size>, ...]

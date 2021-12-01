@@ -1,5 +1,8 @@
 """
     discord-bot-2 backend
+
+   Global variables from config files
+
 """
 import configparser
 import json
