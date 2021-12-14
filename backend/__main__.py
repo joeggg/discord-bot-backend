@@ -5,10 +5,10 @@
 
 """
 import asyncio
-from asyncio.windows_events import WindowsSelectorEventLoopPolicy
 
 from .server import run_server
 
 if __name__ == "__main__":
-    asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())  # windows specific thing
+    # from asyncio.windows_events import WindowsSelectorEventLoopPolicy
+    # asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())  # uncomment for windows
     asyncio.run(run_server())
