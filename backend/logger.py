@@ -6,11 +6,13 @@
 """
 import logging
 
+from .config import CONFIG
+
 
 def setup_logger():
     logger = logging.getLogger("backend")
     logger.setLevel(logging.DEBUG)
-    handler = logging.StreamHandler()
+    handler = logging.FileHandler(CONFIG.get("startup", "log_file_dir"))
     handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("[%(asctime)s]-[%(funcName)s]-[%(levelname)s]: %(message)s")
     handler.setFormatter(formatter)

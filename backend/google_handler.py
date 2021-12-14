@@ -21,7 +21,7 @@ class GoogleHandler:
 
     os.environ[
         "GOOGLE_APPLICATION_CREDENTIALS"
-    ] = f'{os.getcwd()}/{CONFIG.get("general", "google_api_key")}'
+    ] = f'{os.getcwd()}/{CONFIG.get("startup", "google_api_key")}'
     audio_config = None
     voice = None
     client = None

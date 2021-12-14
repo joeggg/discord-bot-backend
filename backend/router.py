@@ -35,7 +35,7 @@ class Router:
 
         ctx = zmq.asyncio.Context()
         self.__sck = ctx.socket(zmq.ROUTER)
-        address = CONFIG.get("general", "zmq_address")
+        address = CONFIG.get("startup", "zmq_address")
         self.__sck.bind(address)
         logger.info("Socket bound at %s", address)
         self.__sck.setsockopt(zmq.RCVTIMEO, 500)

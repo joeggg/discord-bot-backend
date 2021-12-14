@@ -18,7 +18,7 @@ logger = logging.getLogger("backend")
 
 
 async def heartbeat():
-    heartbeat_interval = CONFIG.getint("general", "heartbeat_interval_s")
+    heartbeat_interval = CONFIG.getint("startup", "heartbeat_interval_s")
     start = time.time()
     while True:
         if time.time() - start > heartbeat_interval:
@@ -32,7 +32,7 @@ async def run_server():
     Main running loop
     """
     setup_logger()
-    num_workers = CONFIG.getint("general", "num_workers")
+    num_workers = CONFIG.getint("startup", "num_workers")
     GoogleHandler.initialise()
     router = Router()
     logger.info("Starting server")
