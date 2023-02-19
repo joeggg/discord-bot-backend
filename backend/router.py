@@ -9,7 +9,6 @@ import json
 import logging
 import secrets
 from hashlib import md5
-from typing import Tuple
 
 import cachetools
 import zmq
@@ -31,7 +30,7 @@ class Router:
         self.__db = Redis(decode_responses=True)
         self.in_queue = "job_queue"
         self.out_queue = "response_queue"
-        self.job_cache = cachetools.TTLCache(1000, 60)
+        self.job_cache: cachetools.TTLCache = cachetools.TTLCache(1000, 60)
 
         ctx = zmq.asyncio.Context()
         self.__sck = ctx.socket(zmq.ROUTER)
@@ -90,8 +89,9 @@ class Router:
         """
         while not self.is_shutting_down:
             try:
-                job_id, msg = self.get_from_queue()
-                if msg:
+                work = self.get_from_queue()
+                if work:
+                    job_id, msg = work
                     await self.__sck.send_multipart(msg)
                     logger.info("[router] Sent response, job took %sms", Timer.stop(job_id))
             except Exception as exc:
@@ -100,7 +100,7 @@ class Router:
             finally:
                 await asyncio.sleep(0.01)
 
-    def get_from_queue(self) -> Tuple[str, list]:
+    def get_from_queue(self) -> tuple[str, list] | None:
         """
         Get job ID and zmq message from Redis
         """
@@ -113,4 +113,4 @@ class Router:
                 del self.job_cache[job_id]
                 return job_id, response
             logger.error("Job ID failed to validate. Fake job response?")
-        return None, None
+        return None

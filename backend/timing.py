@@ -19,7 +19,7 @@ logger = logging.getLogger("backend")
 
 
 class Timer:
-    timers = cachetools.TTLCache(1000, 60)
+    timers: cachetools.TTLCache = cachetools.TTLCache(1000, 60)
 
     @classmethod
     def start(cls, key: str) -> None:

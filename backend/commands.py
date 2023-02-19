@@ -8,7 +8,7 @@ import asyncio
 import logging
 import random
 import traceback
-from typing import List
+from typing import Callable, List, TypedDict
 
 from google.cloud import texttospeech
 
@@ -48,8 +48,7 @@ async def say_test(text: str):
     """
     # API call
     logger.info("Making Google texttospeech API call")
-    synthesis_input = texttospeech.SynthesisInput(text=text)
-    resp = GoogleHandler.get_speech(synthesis_input)
+    resp = GoogleHandler.get_speech(text)
 
     with open(CONFIG.get("texttospeech", "texttospeech_dir"), "wb") as file:
         file.write(resp.audio_content)
@@ -129,22 +128,25 @@ async def dnd_dice_roll(rolls: List[str]):
     logger.info("Performing dice roll for rolls: %s", rolls)
     for roll in rolls:
         num, dice = roll.split("d")
-        num = int(num)
-        dice = int(dice)
         if dice not in DICE_SET:
             return 1, f"Dice size d{dice} not in set"
-        if num < 1:
+        if int(num) < 1:
             return 1, f"Number of dice less than 1 for d{dice}"
-        if num > 100:
+        if int(num) > 100:
             return 1, f"{num} rolls for d{dice} is too many"
 
-        result = [random.randint(1, dice) for _ in range(num)]
+        result = [random.randint(1, int(dice)) for _ in range(int(num))]
         results[f"d{dice}"] = result
 
     return 0, results
 
 
-API_COMMANDS = {
+class APICommand(TypedDict):
+    func: Callable
+    params: list[str]
+
+
+API_COMMANDS: dict[str, APICommand] = {
     "test_async": {"func": test_async, "params": []},
     "say_test": {"func": say_test, "params": ["text"]},
     "set_google_preset": {"func": set_google_preset, "params": ["preset"]},

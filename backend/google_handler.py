@@ -22,10 +22,12 @@ class GoogleHandler:
     os.environ[
         "GOOGLE_APPLICATION_CREDENTIALS"
     ] = f'{os.getcwd()}/{CONFIG.get("startup", "google_api_key")}'
-    audio_config = None
-    voice = None
-    client = None
-    voice_list = None
+
+    audio_config: texttospeech.AudioConfig
+    voice: texttospeech.VoiceSelectionParams
+    client: texttospeech.TextToSpeechClient
+    voice_list: list[str] = []
+    last_msg: texttospeech.SynthesizeSpeechResponse
 
     @classmethod
     def initialise(cls):
@@ -52,7 +54,9 @@ class GoogleHandler:
         Request TTS audio binary of input phrase
         """
         resp = cls.client.synthesize_speech(
-            input=input, audio_config=cls.audio_config, voice=cls.voice
+            input=texttospeech.SynthesisInput(text=input),
+            audio_config=cls.audio_config,
+            voice=cls.voice,
         )
         cls.last_msg = resp
         return resp

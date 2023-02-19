@@ -41,10 +41,11 @@ class Worker:
         """
         while not self.is_shutting_down:
             try:
-                job_id, client, work = self.get_work()
+                work = self.get_work()
                 if work:
-                    validate_msg(work)
-                    response = await handle_command(*work.values())
+                    job_id, client, msg = work
+                    validate_msg(msg)
+                    response = await handle_command(*msg.values())
                     await self.put_response(job_id, client, response)
                     logger.info("[%s] Completed job: %s", self.__wid, job_id)
                 await asyncio.sleep(0.01)
@@ -52,7 +53,7 @@ class Worker:
                 logger.exception("[%s] An error occurred processing job: %s", self.__wid, exc)
                 await asyncio.sleep(0.5)
 
-    def get_work(self) -> Tuple[str, bytes, dict]:
+    def get_work(self) -> tuple[str, bytes, dict] | None:
         """Grab work from redis queue"""
         msg = self.__db.lpop(self.in_queue)
         if msg:
@@ -66,7 +67,7 @@ class Worker:
                 return job[0], client, json.loads(work)
             else:
                 raise Exception("Message malformed")
-        return None, None, None
+        return None
 
     async def put_response(
         self,
