@@ -3,6 +3,8 @@ import logging
 import random
 import requests
 
+from .config import CONFIG
+
 logger = logging.getLogger("backend")
 
 
@@ -18,15 +20,12 @@ async def meme_of_day() -> tuple[int, dict]:
     for sub in ["comedyheaven", "gayspiderbrothel", "banvideogames", "hmmmm"]:
         memes.extend(scrape_subreddit(sub, autho, time="week"))
 
-    logger.warning(json.dumps(memes, indent=2))
-
-    # random.seed(0)
     selection = random.randrange(0, len(memes))
     return 0, memes[selection]
 
 
 def get_auth() -> dict:
-    with open("secret/reddit_creds.json", "r") as fp:
+    with open(CONFIG.get("startup", "reddit_creds"), "r") as fp:
         creds = json.load(fp)
     # note that CLIENT_ID refers to 'personal use script' and SECRET_TOKEN to 'token'
     auth = requests.auth.HTTPBasicAuth(creds["client_id"], creds["secret"])

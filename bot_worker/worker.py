@@ -11,6 +11,7 @@ import logging
 from redis import Redis, RedisError, ConnectionError
 
 from .commands import API_COMMANDS, handle_command
+from .exceptions import MessageInvalidError
 
 logger = logging.getLogger("backend")
 
@@ -29,6 +30,7 @@ class Worker:
         self.client_map = "client_map"
         self.is_shutting_down = False
         self.msg_len = 3
+        self.work: bytes
 
     @property
     def wid(self):
@@ -51,6 +53,7 @@ class Worker:
                 await asyncio.sleep(0.01)
             except Exception as exc:
                 logger.exception("[%s] An error occurred processing job: %s", self.__wid, exc)
+                logger.info("The message that caused the error: %s", self.work)
                 await asyncio.sleep(0.5)
 
     def get_work(self) -> tuple[str, bytes, dict] | None:
@@ -59,14 +62,16 @@ class Worker:
         if msg:
             job = json.loads(msg)
             self.msg_len = len(job)
+
             if self.msg_len == 4:
-                client, _, work = [bytes.fromhex(x) for x in job[1:]]
-                return job[0], client, json.loads(work)
-            if self.msg_len == 3:
-                client, work = [bytes.fromhex(x) for x in job[1:]]
-                return job[0], client, json.loads(work)
+                client, _, self.work = [bytes.fromhex(x) for x in job[1:]]
+                return job[0], client, json.loads(self.work)
+            elif self.msg_len == 3:
+                client, self.work = [bytes.fromhex(x) for x in job[1:]]
+                return job[0], client, json.loads(self.work)
             else:
-                raise Exception("Message malformed")
+                raise MessageInvalidError("Message malformed")
+
         return None
 
     async def put_response(
@@ -82,8 +87,10 @@ class Worker:
                 msg = None
                 if self.msg_len == 4:
                     msg = [job_id, client.hex(), "", json.dumps(response).encode().hex()]
+
                 if self.msg_len == 3:
                     msg = [job_id, client.hex(), json.dumps(response).encode().hex()]
+
                 self.__db.rpush(self.out_queue, json.dumps(msg))
                 self.__db.expire(self.out_queue, 60)
                 return
@@ -103,16 +110,12 @@ def validate_msg(msg: dict) -> None:
     """
     Check required keys in message
     """
-    params = msg.get("params")
-    command = msg.get("command")
-    if command is None or params is None:
-        raise Exception("Message failed to validate")
+    command = msg.get("command", "")
+    params = msg.get("params", {})
 
     if command not in API_COMMANDS:
-        raise Exception("Command not in API commands")
+        raise MessageInvalidError("Command not in API commands")
 
     for param in API_COMMANDS[command]["params"]:
         if param not in params:
-            err_msg = f"Missing param: {param}"
-            logger.error(err_msg)
-            raise Exception(err_msg)
+            raise MessageInvalidError(f"Missing param: {param}")
