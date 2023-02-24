@@ -19,9 +19,7 @@ class GoogleHandler:
     Static helper class to handle interfaces to Google APIs
     """
 
-    os.environ[
-        "GOOGLE_APPLICATION_CREDENTIALS"
-    ] = f'{os.getcwd()}/{CONFIG.get("startup", "google_api_key")}'
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = CONFIG.get("startup", "google_api_key")
 
     audio_config: texttospeech.AudioConfig
     voice: texttospeech.VoiceSelectionParams
@@ -36,12 +34,12 @@ class GoogleHandler:
         cls.client = texttospeech.TextToSpeechClient()
         settings = VOICE_PRESETS["default"]
         cls.voice = texttospeech.VoiceSelectionParams(
-            language_code=settings["voice_type"][:5], name=settings["voice_type"]
+            language_code=settings["language"][:5], name=settings["name"]
         )
         cls.audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
             pitch=settings["pitch"],
-            speaking_rate=settings["speaking_rate"],
+            speaking_rate=settings["rate"],
         )
         cls.voice_list = [
             voice.name for voice in cls.client.list_voices(texttospeech.ListVoicesRequest()).voices

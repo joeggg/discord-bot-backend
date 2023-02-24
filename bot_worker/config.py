@@ -6,19 +6,25 @@
 """
 import configparser
 import json
+import os
 
 
 def load_config():
+    filename = (
+        "config/test_config.cfg" if os.environ.get("TESTING") else "/etc/bot-worker/config.cfg"
+    )
     config = configparser.ConfigParser()
-    config.read("config/config.cfg")
+    config.read(filename)
     return config
 
 
+CONFIG = load_config()
+
+
 def load_voice_presets():
-    with open("data/voice_presets.json", "r") as file:
+    with open(f'{CONFIG.get("startup", "data_path")}/voice_presets.json', "r") as file:
         preset_data = json.load(file)
         return preset_data
 
 
-CONFIG = load_config()
 VOICE_PRESETS = load_voice_presets()

@@ -8,12 +8,13 @@ import asyncio
 import logging
 import random
 import traceback
-from typing import Callable, List, TypedDict
+from typing import Callable, TypedDict
 
 from google.cloud import texttospeech
 
 from .config import CONFIG, VOICE_PRESETS
 from .google_handler import GoogleHandler
+from .reddit import meme_of_day
 
 logger = logging.getLogger("backend")
 DICE_SET = {4, 6, 8, 10, 12, 20}
@@ -119,7 +120,7 @@ async def change_google_rate(rate: str):
     return 0, f"Speaking rate successfully changed to {rate}"
 
 
-async def dnd_dice_roll(rolls: List[str]):
+async def dnd_dice_roll(rolls: list[str]):
     """
     Perform a set of rolls with input format ["4d12", "3d20", ...]
     [<num rolls><dice size>, ...]
@@ -147,6 +148,7 @@ class APICommand(TypedDict):
 
 
 API_COMMANDS: dict[str, APICommand] = {
+    "memeoftheday": {"func": meme_of_day, "params": []},
     "test_async": {"func": test_async, "params": []},
     "say_test": {"func": say_test, "params": ["text"]},
     "set_google_preset": {"func": set_google_preset, "params": ["preset"]},

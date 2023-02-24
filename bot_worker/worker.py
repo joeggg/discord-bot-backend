@@ -7,7 +7,6 @@
 import asyncio
 import json
 import logging
-from typing import Tuple
 
 from redis import Redis, RedisError, ConnectionError
 
@@ -39,6 +38,7 @@ class Worker:
         """
         Try to process jobs from queue until shutdown
         """
+        logger.info("%s started", self.wid)
         while not self.is_shutting_down:
             try:
                 work = self.get_work()

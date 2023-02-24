@@ -1,0 +1,1 @@
+A Python-based ZMQ server & worker(s) to run various jobs for my Discord bot: https://github.com/joeggg/bluebot
