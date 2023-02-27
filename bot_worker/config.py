@@ -5,11 +5,11 @@
 
 """
 import configparser
-import json
+import logging
 import os
 
 
-def load_config():
+def load_config() -> configparser.ConfigParser:
     filename = (
         "config/test_config.cfg" if os.environ.get("TESTING") else "/etc/bot-worker/config.cfg"
     )
@@ -19,12 +19,14 @@ def load_config():
 
 
 CONFIG = load_config()
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = CONFIG.get("startup", "google_api_key")
 
 
-def load_voice_presets():
-    with open(f'{CONFIG.get("startup", "data_path")}/voice_presets.json', "r") as file:
-        preset_data = json.load(file)
-        return preset_data
-
-
-VOICE_PRESETS = load_voice_presets()
+def setup_logging() -> None:
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    handler = logging.FileHandler(CONFIG.get("startup", "log_file_dir"))
+    handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("[%(asctime)s]-[%(funcName)s]-[%(levelname)s]: %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)

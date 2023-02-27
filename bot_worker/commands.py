@@ -12,11 +12,10 @@ from typing import Callable, TypedDict
 
 from google.cloud import texttospeech
 
-from .config import CONFIG, VOICE_PRESETS
+from .config import CONFIG
 from .google_handler import GoogleHandler
 from .reddit import meme_of_day
 
-logger = logging.getLogger("backend")
 DICE_SET = {4, 6, 8, 10, 12, 20}
 
 
@@ -29,7 +28,7 @@ async def handle_command(command: str, params: dict) -> dict:
         func = API_COMMANDS[command]["func"]
         code, res = await func(*params.values())
     except Exception as exc:
-        logger.exception(exc)
+        logging.exception(exc)
         return {"code": 1, "error": {"msg": str(exc), "trace": traceback.format_exc()}}
 
     if code == 1:
@@ -48,12 +47,12 @@ async def say_test(text: str):
     Create a TTS audio file for attaching with frontend
     """
     # API call
-    logger.info("Making Google texttospeech API call")
+    logging.info("Making Google texttospeech API call")
     resp = GoogleHandler.get_speech(text)
 
     with open(CONFIG.get("texttospeech", "texttospeech_dir"), "wb") as file:
         file.write(resp.audio_content)
-        logger.info("Google texttospeech response written")
+        logging.info("Google texttospeech response written")
 
     return 0, ""
 
@@ -62,10 +61,10 @@ async def set_google_preset(preset: str):
     """
     Select a TTS voice preset from saved settings
     """
-    if preset not in VOICE_PRESETS:
+    if preset not in GoogleHandler.VOICE_PRESETS:
         return 1, "Voice preset does not exist"
 
-    settings = VOICE_PRESETS[preset]
+    settings = GoogleHandler.VOICE_PRESETS[preset]
     GoogleHandler.voice = texttospeech.VoiceSelectionParams(
         language_code=settings["voice_type"][:5], name=settings["voice_type"]
     )
@@ -79,7 +78,7 @@ async def change_google_voice(voice: str):
     """
     Set only TTS voice type to a specific value
     """
-    logger.info("Voice requested to change to: %s", voice)
+    logging.info("Voice requested to change to: %s", voice)
 
     if voice == "default":
         voice = CONFIG.get("texttospeech", "default_voice")
@@ -94,7 +93,7 @@ async def change_google_pitch(pitch: str):
     """
     Set only TTS voice pitch to a specific value
     """
-    logger.info("Voice pitch requested to change to: %s", pitch)
+    logging.info("Voice pitch requested to change to: %s", pitch)
 
     if pitch == "default":
         pitch = CONFIG.get("texttospeech", "default_pitch")
@@ -109,7 +108,7 @@ async def change_google_rate(rate: str):
     """
     Set only TTS speaking rate to a specific value
     """
-    logger.info("Speaking rate requested to change to: %s", rate)
+    logging.info("Speaking rate requested to change to: %s", rate)
 
     if rate == "default":
         rate = CONFIG.get("texttospeech", "default_rate")
@@ -126,7 +125,7 @@ async def dnd_dice_roll(rolls: list[str]):
     [<num rolls><dice size>, ...]
     """
     results = {}
-    logger.info("Performing dice roll for rolls: %s", rolls)
+    logging.info("Performing dice roll for rolls: %s", rolls)
     for roll in rolls:
         num, dice = roll.split("d")
         if dice not in DICE_SET:

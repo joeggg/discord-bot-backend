@@ -13,8 +13,6 @@ from redis import Redis, RedisError, ConnectionError
 from .commands import API_COMMANDS, handle_command
 from .exceptions import MessageInvalidError
 
-logger = logging.getLogger("backend")
-
 
 class Worker:
     """
@@ -30,7 +28,7 @@ class Worker:
         self.client_map = "client_map"
         self.is_shutting_down = False
         self.msg_len = 3
-        self.work: bytes
+        self.work: bytes = b""
 
     @property
     def wid(self):
@@ -40,7 +38,7 @@ class Worker:
         """
         Try to process jobs from queue until shutdown
         """
-        logger.info("%s started", self.wid)
+        logging.info("%s started", self.wid)
         while not self.is_shutting_down:
             try:
                 work = self.get_work()
@@ -49,11 +47,11 @@ class Worker:
                     validate_msg(msg)
                     response = await handle_command(*msg.values())
                     await self.put_response(job_id, client, response)
-                    logger.info("[%s] Completed job: %s", self.__wid, job_id)
+                    logging.info("[%s] Completed job: %s", self.__wid, job_id)
                 await asyncio.sleep(0.01)
             except Exception as exc:
-                logger.exception("[%s] An error occurred processing job: %s", self.__wid, exc)
-                logger.info("The message that caused the error: %s", self.work)
+                logging.exception("[%s] An error occurred processing job: %s", self.__wid, exc)
+                logging.info("The message that caused the error: %s", self.work)
                 await asyncio.sleep(0.5)
 
     def get_work(self) -> tuple[str, bytes, dict] | None:
@@ -95,7 +93,7 @@ class Worker:
                 self.__db.expire(self.out_queue, 60)
                 return
             except (RedisError, ConnectionError):
-                logger.exception(
+                logging.exception(
                     "[%s] An error occurred in Redis, retrying (attempt %s of %s)",
                     self.__wid,
                     attempt + 1,

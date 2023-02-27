@@ -1,11 +1,8 @@
 import json
-import logging
 import random
 import requests
 
 from .config import CONFIG
-
-logger = logging.getLogger("backend")
 
 
 async def meme_of_day() -> tuple[int, dict]:

@@ -8,13 +8,10 @@ import asyncio
 import logging
 import time
 
-from .config import CONFIG
+from .config import CONFIG, setup_logging
 from .google_handler import GoogleHandler
-from .logger import setup_logger
 from .router import Router
 from .worker import Worker
-
-logger = logging.getLogger("backend")
 
 
 async def heartbeat():
@@ -23,7 +20,7 @@ async def heartbeat():
     while True:
         if time.time() - start > heartbeat_interval:
             start = time.time()
-            logger.info("[main] HEARTBEAT")
+            logging.info("[main] HEARTBEAT")
         await asyncio.sleep(5)
 
 
@@ -31,11 +28,11 @@ async def run_server():
     """
     Main running loop
     """
-    setup_logger()
+    setup_logging()
     num_workers = CONFIG.getint("startup", "num_workers")
     GoogleHandler.initialise()
     router = Router()
-    logger.info("Starting server")
+    logging.info("Starting server")
 
     futures = [
         *[Worker(i).run() for i in range(num_workers)],
