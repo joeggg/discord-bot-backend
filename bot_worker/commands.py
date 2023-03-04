@@ -19,13 +19,14 @@ from .reddit import meme_of_day
 DICE_SET = {4, 6, 8, 10, 12, 20}
 
 
-async def handle_command(command: str, params: dict) -> dict:
+async def handle_command(command: str, params: dict | None) -> dict:
     """
     Checks command inputs and calls the needed function,
     handling errors and the return API response
     """
+    params = params or {}
+    func = API_COMMANDS[command]["func"]
     try:
-        func = API_COMMANDS[command]["func"]
         code, res = await func(*params.values())
     except Exception as exc:
         logging.exception(exc)
@@ -66,10 +67,10 @@ async def set_google_preset(preset: str):
 
     settings = GoogleHandler.VOICE_PRESETS[preset]
     GoogleHandler.voice = texttospeech.VoiceSelectionParams(
-        language_code=settings["voice_type"][:5], name=settings["voice_type"]
+        language_code=settings["language"], name=settings["name"]
     )
     GoogleHandler.audio_config.pitch = settings["pitch"]
-    GoogleHandler.audio_config.speaking_rate = settings["speaking_rate"]
+    GoogleHandler.audio_config.speaking_rate = settings["rate"]
 
     return 0, f"Voice set to {preset}"
 
