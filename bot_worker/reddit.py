@@ -1,8 +1,8 @@
-import json
 import random
+import time
 import requests
 
-from .config import CONFIG
+from .config import REDDIT_CONF
 
 
 async def meme_of_day() -> tuple[int, dict]:
@@ -10,29 +10,29 @@ async def meme_of_day() -> tuple[int, dict]:
     returns image url with title, subreddit and author -randomly selected from output of scrape_subreddit
     """
     ##get authorisation
-
-    autho = get_auth()
+    set_auth()
 
     memes = []
-    for sub in ["comedyheaven", "gayspiderbrothel", "banvideogames", "hmmmm"]:
-        memes.extend(scrape_subreddit(sub, autho, time="week"))
+    for sub in REDDIT_CONF.subreddits:
+        memes.extend(scrape_subreddit(sub, time="week", lim=10))
 
     selection = random.randrange(0, len(memes))
     return 0, memes[selection]
 
 
-def get_auth() -> dict:
-    with open(CONFIG.get("startup", "reddit_creds"), "r") as fp:
-        creds = json.load(fp)
+def set_auth() -> None:
+    # Only auth if token is expired
+    if time.time() < REDDIT_CONF.auth_time + (100 * 60):
+        return
     # note that CLIENT_ID refers to 'personal use script' and SECRET_TOKEN to 'token'
-    auth = requests.auth.HTTPBasicAuth(creds["client_id"], creds["secret"])
-
-    # file = open(filepath, 'r')
-    # p_list = file.read()
-    # file.close()
+    auth = requests.auth.HTTPBasicAuth(REDDIT_CONF.creds["client_id"], REDDIT_CONF.creds["secret"])
 
     # here we pass our login method (password), username, and password
-    data = {"grant_type": "password", "username": creds["username"], "password": creds["password"]}
+    data = {
+        "grant_type": "password",
+        "username": REDDIT_CONF.creds["username"],
+        "password": REDDIT_CONF.creds["password"],
+    }
 
     # setup our header info, which gives reddit a brief description of our app
     headers = {"User-Agent": "botblue"}
@@ -44,19 +44,17 @@ def get_auth() -> dict:
 
     # print(res)
     # convert response to JSON and pull access_token value
-    TOKEN = res.json()["access_token"]
+    token = res.json()["access_token"]
 
     # add authorization to our headers dictionary
-    headers = {**headers, **{"Authorization": f"bearer {TOKEN}"}}
+    REDDIT_CONF.auth_headers = {**headers, **{"Authorization": f"bearer {token}"}}
+    REDDIT_CONF.auth_time = time.time()
 
     # while the token is valid (~2 hours) we just add headers=headers to our requests
-    requests.get("https://oauth.reddit.com/api/v1/me", headers=headers)
-
-    return headers
 
 
 def scrape_subreddit(
-    subreddit: str, auth: dict, time: str = "week", lim: int = 10, controversial: bool = False
+    subreddit: str, time: str = "week", lim: int = 10, controversial: bool = False
 ) -> list[dict]:
     """
     function that scrapes subreddit posts and collects images
@@ -79,7 +77,9 @@ def scrape_subreddit(
 
     ##make the request
     res = requests.get(
-        f"https://oauth.reddit.com/r/{subreddit}/{cat}", headers=auth, params=param_dict  # type: ignore
+        f"https://oauth.reddit.com/r/{subreddit}/{cat}",
+        headers=REDDIT_CONF.auth_headers,
+        params=param_dict,  # type: ignore
     )
     # res objct contains listings data
     data = []
