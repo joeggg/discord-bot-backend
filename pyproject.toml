@@ -11,7 +11,7 @@ cachetools = "^5.3.0"
 pyzmq = "^25.0.0"
 redis = "^4.5.1"
 google-cloud-texttospeech = "^2.14.1"
-requests = "^2.28.2"
+aiohttp = "^3.8.4"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.0.1"
