@@ -16,7 +16,7 @@ async def meme_of_day() -> tuple[int, dict]:
         await set_auth(session)
 
         coros = [
-            scrape_subreddit(session, sub, time="week", lim=10) for sub in REDDIT_CONF.subreddits
+            scrape_subreddit(session, sub, time="week", lim=20) for sub in REDDIT_CONF.subreddits
         ]
 
         memes = []
@@ -110,6 +110,8 @@ async def scrape_subreddit(
                         "url": post["url"],
                         "author": post["author"],
                         "subreddit": "r/" + subreddit,
+                        "score": post["score"],
+                        "upvote_ratio": f'{int(100*post["upvote_ratio"])}%',
                     }
                 )
 
