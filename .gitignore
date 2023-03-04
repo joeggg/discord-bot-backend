@@ -3,3 +3,6 @@ venv/
 secret/
 *.json
 botsounds
+log/
+data/
+run.sh

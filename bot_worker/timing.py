@@ -15,11 +15,9 @@ import cachetools
 
 NS_IN_MS = 1000000
 
-logger = logging.getLogger("backend")
-
 
 class Timer:
-    timers = cachetools.TTLCache(1000, 60)
+    timers: cachetools.TTLCache = cachetools.TTLCache(1000, 60)
 
     @classmethod
     def start(cls, key: str) -> None:
@@ -40,14 +38,14 @@ def timeit(func):
         start = time.time_ns()
         func(*args, **kwargs)
         elapsed_ns = time.time_ns() - start
-        logger.info("%s took %fms", func.__name__, elapsed_ns / NS_IN_MS)
+        logging.info("%s took %fms", func.__name__, elapsed_ns / NS_IN_MS)
 
     @functools.wraps(func)
     async def async_wrapper(*args, **kwargs):
         start = time.time_ns()
         await func(*args, **kwargs)
         elapsed_ns = time.time_ns() - start
-        logger.info("%s took %fms", func.__name__, elapsed_ns / NS_IN_MS)
+        logging.info("%s took %fms", func.__name__, elapsed_ns / NS_IN_MS)
 
     if iscoroutinefunction(func):
         return async_wrapper

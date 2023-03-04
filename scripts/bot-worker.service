@@ -1,0 +1,12 @@
+[Unit]
+Description=Discord bot worker
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/bot-worker
+ExecStart=bash /opt/bot-worker/run.sh
+User=bot-worker
+Group=bot-worker
+
+[Install]
+WantedBy=multi-user.target

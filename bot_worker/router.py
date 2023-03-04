@@ -9,7 +9,6 @@ import json
 import logging
 import secrets
 from hashlib import md5
-from typing import Tuple
 
 import cachetools
 import zmq
@@ -18,8 +17,6 @@ from redis import Redis, RedisError, ConnectionError
 
 from .config import CONFIG
 from .timing import Timer
-
-logger = logging.getLogger("backend")
 
 
 class Router:
@@ -31,13 +28,13 @@ class Router:
         self.__db = Redis(decode_responses=True)
         self.in_queue = "job_queue"
         self.out_queue = "response_queue"
-        self.job_cache = cachetools.TTLCache(1000, 60)
+        self.job_cache: cachetools.TTLCache = cachetools.TTLCache(1000, 60)
 
         ctx = zmq.asyncio.Context()
         self.__sck = ctx.socket(zmq.ROUTER)
-        address = CONFIG.get("general", "zmq_address")
+        address = CONFIG.get("startup", "zmq_address")
         self.__sck.bind(address)
-        logger.info("Socket bound at %s", address)
+        logging.info("Socket bound at %s", address)
         self.__sck.setsockopt(zmq.RCVTIMEO, 500)
         self.__sck.setsockopt(zmq.LINGER, 1000)
 
@@ -55,7 +52,7 @@ class Router:
             except zmq.Again:
                 pass
             except Exception as exc:
-                logger.exception(exc)
+                logging.exception(exc)
                 self.__sck.send_json({"code": 1})
             finally:
                 await asyncio.sleep(0.01)
@@ -72,10 +69,10 @@ class Router:
                 self.__db.expire(self.in_queue, 60)
                 self.job_cache[job_id] = None  # store ID as dict for faster lookup
                 Timer.start(job_id)
-                logger.info("[router] Queued job: %s", job_id)
+                logging.info("[router] Queued job: %s", job_id)
                 return
             except (RedisError, ConnectionError):
-                logger.exception(
+                logging.exception(
                     "An error occurred in Redis, retrying (attempt %s of %s)",
                     attempt + 1,
                     max_attempts,
@@ -90,17 +87,18 @@ class Router:
         """
         while not self.is_shutting_down:
             try:
-                job_id, msg = self.get_from_queue()
-                if msg:
+                work = self.get_from_queue()
+                if work:
+                    job_id, msg = work
                     await self.__sck.send_multipart(msg)
-                    logger.info("[router] Sent response, job took %sms", Timer.stop(job_id))
+                    logging.info("[router] Sent response, job took %sms", Timer.stop(job_id))
             except Exception as exc:
-                logger.exception(exc)
+                logging.exception(exc)
                 self.__sck.send_json({"code": 1})
             finally:
                 await asyncio.sleep(0.01)
 
-    def get_from_queue(self) -> Tuple[str, list]:
+    def get_from_queue(self) -> tuple[str, list] | None:
         """
         Get job ID and zmq message from Redis
         """
@@ -112,5 +110,5 @@ class Router:
                 response = [bytes.fromhex(x) for x in data[1:]]
                 del self.job_cache[job_id]
                 return job_id, response
-            logger.error("Job ID failed to validate. Fake job response?")
-        return None, None
+            logging.error("Job ID failed to validate. Fake job response?")
+        return None

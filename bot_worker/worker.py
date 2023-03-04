@@ -7,13 +7,11 @@
 import asyncio
 import json
 import logging
-from typing import Tuple
 
 from redis import Redis, RedisError, ConnectionError
 
 from .commands import API_COMMANDS, handle_command
-
-logger = logging.getLogger("backend")
+from .exceptions import MessageInvalidError
 
 
 class Worker:
@@ -30,6 +28,7 @@ class Worker:
         self.client_map = "client_map"
         self.is_shutting_down = False
         self.msg_len = 3
+        self.work: bytes = b""
 
     @property
     def wid(self):
@@ -39,34 +38,39 @@ class Worker:
         """
         Try to process jobs from queue until shutdown
         """
+        logging.info("%s started", self.wid)
         while not self.is_shutting_down:
             try:
-                job_id, client, work = self.get_work()
+                work = self.get_work()
                 if work:
-                    validate_msg(work)
-                    response = await handle_command(*work.values())
+                    job_id, client, msg = work
+                    validate_msg(msg)
+                    response = await handle_command(*msg.values())
                     await self.put_response(job_id, client, response)
-                    logger.info("[%s] Completed job: %s", self.__wid, job_id)
+                    logging.info("[%s] Completed job: %s", self.__wid, job_id)
                 await asyncio.sleep(0.01)
             except Exception as exc:
-                logger.exception("[%s] An error occurred processing job: %s", self.__wid, exc)
+                logging.exception("[%s] An error occurred processing job: %s", self.__wid, exc)
+                logging.info("The message that caused the error: %s", self.work)
                 await asyncio.sleep(0.5)
 
-    def get_work(self) -> Tuple[str, bytes, dict]:
+    def get_work(self) -> tuple[str, bytes, dict] | None:
         """Grab work from redis queue"""
         msg = self.__db.lpop(self.in_queue)
         if msg:
             job = json.loads(msg)
             self.msg_len = len(job)
+
             if self.msg_len == 4:
-                client, _, work = [bytes.fromhex(x) for x in job[1:]]
-                return job[0], client, json.loads(work)
-            if self.msg_len == 3:
-                client, work = [bytes.fromhex(x) for x in job[1:]]
-                return job[0], client, json.loads(work)
+                client, _, self.work = [bytes.fromhex(x) for x in job[1:]]
+                return job[0], client, json.loads(self.work)
+            elif self.msg_len == 3:
+                client, self.work = [bytes.fromhex(x) for x in job[1:]]
+                return job[0], client, json.loads(self.work)
             else:
-                raise Exception("Message malformed")
-        return None, None, None
+                raise MessageInvalidError("Message malformed")
+
+        return None
 
     async def put_response(
         self,
@@ -81,13 +85,15 @@ class Worker:
                 msg = None
                 if self.msg_len == 4:
                     msg = [job_id, client.hex(), "", json.dumps(response).encode().hex()]
+
                 if self.msg_len == 3:
                     msg = [job_id, client.hex(), json.dumps(response).encode().hex()]
+
                 self.__db.rpush(self.out_queue, json.dumps(msg))
                 self.__db.expire(self.out_queue, 60)
                 return
             except (RedisError, ConnectionError):
-                logger.exception(
+                logging.exception(
                     "[%s] An error occurred in Redis, retrying (attempt %s of %s)",
                     self.__wid,
                     attempt + 1,
@@ -102,16 +108,12 @@ def validate_msg(msg: dict) -> None:
     """
     Check required keys in message
     """
-    params = msg.get("params")
-    command = msg.get("command")
-    if command is None or params is None:
-        raise Exception("Message failed to validate")
+    command = msg.get("command", "")
+    params = msg.get("params", {})
 
     if command not in API_COMMANDS:
-        raise Exception("Command not in API commands")
+        raise MessageInvalidError("Command not in API commands")
 
     for param in API_COMMANDS[command]["params"]:
         if param not in params:
-            err_msg = f"Missing param: {param}"
-            logger.error(err_msg)
-            raise Exception(err_msg)
+            raise MessageInvalidError(f"Missing param: {param}")
